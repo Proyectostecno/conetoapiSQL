@@ -1,33 +1,57 @@
 <?php
+session_start();
+
+// Establecer la zona horaria a la de Colombia
+date_default_timezone_set('America/Bogota');
+
 // Incluir el archivo de conexión SQLite
 include 'controllers/db_connection_sqlite.php';
 
-if (!isset($_GET['despacho']) || empty($_GET['despacho']) || !isset($_GET['productosPermitidos']) || !isset($_GET['productosDespacho'])) {
+if (!isset($_SESSION['despacho']) || !isset($_SESSION['productosPermitidos']) || !isset($_SESSION['productosDespacho'])) {
     die('Despacho no especificado o productos permitidos/despacho no especificados.');
 }
 
-$despacho = $_GET['despacho'];
-$productosPermitidos = json_decode($_GET['productosPermitidos'], true);
-$productosDespacho = json_decode($_GET['productosDespacho'], true);
+$despacho = $_SESSION['despacho'];
+$productosPermitidos = $_SESSION['productosPermitidos'];
+$productosDespacho = $_SESSION['productosDespacho'];
 
 $mensaje = '';
 $mensajeTipo = '';
 $productosFaltantes = [];
-$showErrorModal = false;
-$showSuccessModal = false;
+$showErrorModal = isset($_SESSION['showErrorModal']) ? $_SESSION['showErrorModal'] : false;
+$showSuccessModal = isset($_SESSION['showSuccessModal']) ? $_SESSION['showSuccessModal'] : false;
+
+// Limpiar los indicadores de modal después de usarlos
+unset($_SESSION['showErrorModal']);
+unset($_SESSION['showSuccessModal']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['idReferencia'])) {
     $idReferencia = $_POST['idReferencia'];
 
     if (in_array($idReferencia, $productosPermitidos)) {
-        // Verificar y almacenar el producto escaneado
-        $stmt = $connSQLite->prepare("INSERT INTO ProductosEscaneados (despacho, idReferencia) VALUES (?, ?)");
+        // Verificar la cantidad ya escaneada
+        $stmt = $connSQLite->prepare("SELECT COUNT(*) AS cantidad FROM ProductosEscaneados WHERE despacho = ? AND idReferencia = ?");
         $stmt->execute([$despacho, $idReferencia]);
+        $cantidadEscaneada = $stmt->fetch(PDO::FETCH_ASSOC)['cantidad'];
 
-        $mensaje = 'Producto ' . htmlspecialchars($idReferencia) . ' escaneado exitosamente.';
-        $mensajeTipo = 'success';
+        if ($cantidadEscaneada < $productosDespacho[$idReferencia]['cantidad']) {
+            // Almacenar el producto escaneado con la hora actual de Colombia
+            $stmt = $connSQLite->prepare("INSERT INTO ProductosEscaneados (despacho, idReferencia, timestamp) VALUES (?, ?, ?)");
+            $result = $stmt->execute([$despacho, $idReferencia, date('Y-m-d H:i:s')]);
+
+            if ($result) {
+                $mensaje = 'Producto escaneado exitosamente.';
+                $mensajeTipo = 'success';
+            } else {
+                $mensaje = 'Error al escanear el producto.';
+                $mensajeTipo = 'error';
+            }
+        } else {
+            $mensaje = 'El producto ya ha sido escaneado en su totalidad.';
+            $mensajeTipo = 'error';
+        }
     } else {
-        $mensaje = 'Producto ' . htmlspecialchars($idReferencia) . ' no pertenece a este despacho.';
+        $mensaje = 'Producto no pertenece a este despacho.';
         $mensajeTipo = 'error';
     }
 }
@@ -48,7 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar'])) {
 
         if ($cantidadRestante > 0) {
             $productosFaltantes[] = [
-                'idReferencia' => $idReferencia,
                 'descripcion' => $producto['descripcion'],
                 'cantidadRestante' => $cantidadRestante
             ];
@@ -57,24 +80,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar'])) {
 
     if (count($productosFaltantes) === 0) {
         // Generar reporte y limpiar historial
-        $stmt = $connSQLite->prepare("INSERT INTO Reportes (despacho) VALUES (?)");
-        $stmt->execute([$despacho]);
+        $stmt = $connSQLite->prepare("INSERT INTO Reportes (despacho, timestamp) VALUES (?, ?)");
+        $stmt->execute([$despacho, date('Y-m-d H:i:s')]);
         $reporte_id = $connSQLite->lastInsertId();
 
         foreach ($productosDespacho as $idReferencia => $producto) {
             $cantidadEscaneadaProducto = isset($cantidadEscaneada[$idReferencia]) ? $cantidadEscaneada[$idReferencia] : 0;
-            $stmt = $connSQLite->prepare("INSERT INTO ReporteDetalles (reporte_id, idReferencia, descripcion, cantidad) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$reporte_id, $idReferencia, $producto['descripcion'], $cantidadEscaneadaProducto]);
+            if ($cantidadEscaneadaProducto > 0) {
+                $stmt = $connSQLite->prepare("INSERT INTO ReporteDetalles (reporte_id, idReferencia, descripcion, cantidad) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$reporte_id, $idReferencia, $producto['descripcion'], $cantidadEscaneadaProducto]);
+            }
         }
 
         // Limpiar historial de escaneos
         $stmt = $connSQLite->prepare("DELETE FROM ProductosEscaneados WHERE despacho = ?");
         $stmt->execute([$despacho]);
 
-        $showSuccessModal = true;
+        $_SESSION['showSuccessModal'] = true;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
     } else {
-        $showErrorModal = true;
+        $_SESSION['showErrorModal'] = true;
+        $_SESSION['productosFaltantes'] = $productosFaltantes;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit();
     }
+}
+
+if (isset($_SESSION['productosFaltantes'])) {
+    $productosFaltantes = $_SESSION['productosFaltantes'];
+    unset($_SESSION['productosFaltantes']);
 }
 ?>
 <!DOCTYPE html>
@@ -88,10 +123,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar'])) {
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const input = document.getElementById("idReferencia");
-            input.addEventListener("keydown", function(event) {
-                if (event.key === "Enter") {
-                    event.preventDefault();
+            input.addEventListener("input", function(event) {
+                if (input.value.length > 0) {
                     document.getElementById("scanForm").submit();
+                }
+            });
+            input.focus();
+
+            document.addEventListener("click", function(event) {
+                if (event.target !== input) {
+                    input.focus();
                 }
             });
         });
@@ -103,18 +144,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar'])) {
         <h1 class="text-2xl font-bold mb-4">Escanear Productos para el Despacho <?php echo htmlspecialchars($despacho); ?></h1>
         <form id="scanForm" method="POST" action="">
             <div class="mb-4">
-                <label for="idReferencia" class="block text-sm font-medium text-gray-700">Escanear Producto (ID Referencia):</label>
+                <label for="idReferencia" class="block text-sm font-medium text-gray-700">Escanear Producto:</label>
                 <input type="text" id="idReferencia" name="idReferencia" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required autofocus>
                 <?php if ($mensaje && $mensajeTipo == 'success') : ?>
                     <div class="mt-2 text-green-600"><?php echo $mensaje; ?></div>
                 <?php elseif ($mensaje && $mensajeTipo == 'error') : ?>
                     <div class="mt-2 text-red-600"><?php echo $mensaje; ?></div>
                 <?php endif; ?>
-            </div>
-            <div>
-                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Escanear
-                </button>
             </div>
         </form>
 
@@ -142,7 +178,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar'])) {
         echo '<table class="min-w-full bg-white">';
         echo '<thead>';
         echo '<tr>';
-        echo '<th class="px-4 py-2">ID Referencia</th>';
         echo '<th class="px-4 py-2">Descripción</th>';
         echo '<th class="px-4 py-2">Cantidad Escaneada</th>';
         echo '<th class="px-4 py-2">Cantidad Restante</th>';
@@ -154,11 +189,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar'])) {
             $cantidadEscaneadaProducto = isset($cantidadEscaneada[$idReferencia]) ? $cantidadEscaneada[$idReferencia] : 0;
             $cantidadRestante = $producto['cantidad'] - $cantidadEscaneadaProducto;
 
+            // Mostrar cantidad restante sin negativos
+            $cantidadRestanteMostrar = $cantidadRestante > 0 ? $cantidadRestante : 0;
+
             echo '<tr>';
-            echo '<td class="border px-4 py-2">' . htmlspecialchars($idReferencia) . '</td>';
             echo '<td class="border px-4 py-2">' . htmlspecialchars($producto['descripcion']) . '</td>';
             echo '<td class="border px-4 py-2">' . htmlspecialchars($cantidadEscaneadaProducto) . '</td>';
-            echo '<td class="border px-4 py-2">' . htmlspecialchars($cantidadRestante) . '</td>';
+            echo '<td class="border px-4 py-2">' . htmlspecialchars($cantidadRestanteMostrar) . '</td>';
             echo '</tr>';
         }
 
@@ -182,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar'])) {
                                 <p class="text-sm text-gray-500">Faltan los siguientes productos por escanear:</p>
                                 <ul class="text-left">
                                     <?php foreach ($productosFaltantes as $faltante) : ?>
-                                        <li><?php echo htmlspecialchars($faltante['cantidadRestante']) . ' de ' . htmlspecialchars($faltante['descripcion']) . ' (' . htmlspecialchars($faltante['idReferencia']) . ')'; ?></li>
+                                        <li><?php echo htmlspecialchars($faltante['cantidadRestante']) . ' de ' . htmlspecialchars($faltante['descripcion']); ?></li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
