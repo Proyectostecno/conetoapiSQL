@@ -13,7 +13,7 @@ $productosPermitidos = $_SESSION['productosPermitidos'];
 $productosDespacho = $_SESSION['productosDespacho'];
 
 // Número de escaneos a simular para cada producto
-$numEscaneos = 600; // Puedes ajustar este valor según necesites
+$numEscaneos = 800; // Puedes ajustar este valor según necesites
 
 foreach ($productosPermitidos as $idReferencia) {
     $cantidadPermitida = $productosDespacho[$idReferencia]['cantidad'];

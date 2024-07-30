@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-// Incluir el archivo de conexión SQLite y la librería FPDF
-include 'controllers/db_connection_sqlite.php';
-require('src/resources/fpdf186/fpdf.php');
+
+include '../../../../controllers/db_connection_sqlite.php';
+require('../../../resources/fpdf186/fpdf.php');
 
 if (!isset($_GET['id'])) {
     die('ID de reporte no especificado.');
