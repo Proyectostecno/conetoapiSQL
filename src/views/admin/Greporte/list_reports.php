@@ -146,8 +146,8 @@ foreach ($reportes as $reporte) {
                                 <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200"><?php echo htmlspecialchars($reporte['despacho']); ?></td>
                                 <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200"><?php echo htmlspecialchars($reporte['timestamp']); ?></td>
                                 <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
-                                    <a href="generate_report.php?id=<?php echo $reporte['id']; ?>" class="text-blue-600 hover:text-blue-800">Descargar</a>
-                                    <button onclick="viewReport(<?php echo $reporte['id']; ?>)" class="text-green-600 hover:text-green-800 ml-4">Ver</button>
+                                    <a href="generate_report.php?id=<?php echo $reporte['id']; ?>" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Descargar</a>
+                                    <button onclick="viewReport(<?php echo $reporte['id']; ?>)" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded ml-4">Ver</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -208,8 +208,8 @@ foreach ($reportes as $reporte) {
                     <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">${reporte.despacho}</td>
                     <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">${reporte.timestamp}</td>
                     <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
-                        <a href="generate_report.php?id=${reporte.id}" class="text-blue-600 hover:text-blue-800">Descargar</a>
-                        <button onclick="viewReport(${reporte.id})" class="text-green-600 hover:text-green-800 ml-4">Ver</button>
+                        <a href="generate_report.php?id=${reporte.id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Descargar</a>
+                        <button onclick="viewReport(${reporte.id})" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded ml-4">Ver</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
