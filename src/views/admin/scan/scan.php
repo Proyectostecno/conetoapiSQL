@@ -1,5 +1,9 @@
 <?php
 session_start();
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+    header('Location: ../../../../index.php');
+    exit();
+}
 
 date_default_timezone_set('America/Bogota');
 
@@ -119,7 +123,7 @@ if (isset($_SESSION['productosFaltantes'])) {
     <title>Escanear Productos</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
-    <link rel="stylesheet" href="../../../../src/views/css/inicio_styles.css">
+    <link rel="stylesheet" href="../../../resources/css/inicio_styles.css">
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const input = document.getElementById("idReferencia");
@@ -140,7 +144,6 @@ if (isset($_SESSION['productosFaltantes'])) {
 </head>
 
 <body class="bg-gray-100">
-
     <!-- SIDEBAR -->
     <section id="sidebar">
         <a href="#" class="brand">
@@ -149,43 +152,20 @@ if (isset($_SESSION['productosFaltantes'])) {
         </a>
         <ul class="side-menu top">
             <li>
-                <a href="../inicio/index.php">
+                <a href="../index.php">
                     <i class='bx bxs-dashboard'></i>
                     <span class="text">Inicio</span>
                 </a>
             </li>
-            <li>
-                <a href="../Vbarcodes/Vbarcodes.php">
+            <li class="active">
+                <a href="../scan/scan.php">
                     <i class='bx bx-barcode-reader'></i>
                     <span class="text">Verificación</span>
                 </a>
             </li>
+
             <li>
-                <a href="../Sproductos/Sproductos.php">
-                    <i class='bx bxs-cloud-upload'></i>
-                    <span class="text">Subir Productos</span>
-                </a>
-            </li>
-            <li class="active">
-                <a href="../Sbarcodes/Sbarcodes.php">
-                    <i class='bx bx-upload'></i>
-                    <span class="text">Subir Barcodes</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Dproductos/Dproductos.php">
-                    <i class='bx bxs-download'></i>
-                    <span class="text">D Productos</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Vbarcodes/seleccionar_grupo.php">
-                    <i class='bx bx-package'></i>
-                    <span class="text">Selecionar Grupo</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Lreporte/Lreporte.php">
+                <a href="../Greporte/list_reports.php">
                     <i class='bx bxs-report'></i>
                     <span class="text">Reportes</span>
                 </a>
@@ -193,13 +173,13 @@ if (isset($_SESSION['productosFaltantes'])) {
         </ul>
         <ul class="side-menu">
             <li>
-                <a href="../Rusuarios/Rusuarios.php">
+                <a href="../Rregistro/register.php">
                     <i class='bx bx-user'></i>
                     <span class="text">R usuarios</span>
                 </a>
             </li>
-            <li class="">
-                <a href="../Rusuarios/Vusuarios.php">
+            <li>
+                <a href="../Rregistro/list_users.php">
                     <i class='bx bx-group'></i>
                     <span class="text">Listado usuarios</span>
                 </a>
@@ -207,7 +187,7 @@ if (isset($_SESSION['productosFaltantes'])) {
             <li>
                 <a href="../../../../controllers/logout.php" class="logout">
                     <i class='bx bxs-log-out-circle'></i>
-                    <span class="text">Cerrar sesíon</span>
+                    <span class="text">Cerrar sesión</span>
                 </a>
             </li>
         </ul>
@@ -347,7 +327,7 @@ if (isset($_SESSION['productosFaltantes'])) {
     </section>
     <!-- CONTENT -->
 
-    <script src="../../../../src/views/js/Inicio_script.js"></script>
+    <script src="../../../resources/js/Inicio_script.js"></script>
 </body>
 
 </html>

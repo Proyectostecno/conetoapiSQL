@@ -1,6 +1,9 @@
 <?php
 session_start();
-
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+    header('Location: ../../../../index.php');
+    exit();
+}
 // Incluir el archivo de conexión SQLite
 include '../../../../controllers/db_connection_sqlite.php';
 
@@ -60,43 +63,20 @@ foreach ($reportes as $reporte) {
         </a>
         <ul class="side-menu top">
             <li>
-                <a href="../inicio/index.php">
+                <a href="../index.php">
                     <i class='bx bxs-dashboard'></i>
                     <span class="text">Inicio</span>
                 </a>
             </li>
             <li>
-                <a href="../Vbarcodes/Vbarcodes.php">
+                <a href="../scan/scan.php">
                     <i class='bx bx-barcode-reader'></i>
                     <span class="text">Verificación</span>
                 </a>
             </li>
-            <li>
-                <a href="../Sproductos/Sproductos.php">
-                    <i class='bx bxs-cloud-upload'></i>
-                    <span class="text">Subir Productos</span>
-                </a>
-            </li>
+
             <li class="active">
-                <a href="../Sbarcodes/Sbarcodes.php">
-                    <i class='bx bx-upload'></i>
-                    <span class="text">Subir Barcodes</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Dproductos/Dproductos.php">
-                    <i class='bx bxs-download'></i>
-                    <span class="text">D Productos</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Vbarcodes/seleccionar_grupo.php">
-                    <i class='bx bx-package'></i>
-                    <span class="text">Selecionar Grupo</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Lreporte/Lreporte.php">
+                <a href="../Greporte/list_reports.php">
                     <i class='bx bxs-report'></i>
                     <span class="text">Reportes</span>
                 </a>
@@ -104,13 +84,13 @@ foreach ($reportes as $reporte) {
         </ul>
         <ul class="side-menu">
             <li>
-                <a href="../Rusuarios/Rusuarios.php">
+                <a href="../Rregistro/register.php">
                     <i class='bx bx-user'></i>
                     <span class="text">R usuarios</span>
                 </a>
             </li>
             <li>
-                <a href="../Rusuarios/Vusuarios.php">
+                <a href="../Rregistro/list_users.php">
                     <i class='bx bx-group'></i>
                     <span class="text">Listado usuarios</span>
                 </a>
@@ -167,6 +147,7 @@ foreach ($reportes as $reporte) {
                                 <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200"><?php echo htmlspecialchars($reporte['timestamp']); ?></td>
                                 <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
                                     <a href="generate_report.php?id=<?php echo $reporte['id']; ?>" class="text-blue-600 hover:text-blue-800">Descargar</a>
+                                    <button onclick="viewReport(<?php echo $reporte['id']; ?>)" class="text-green-600 hover:text-green-800 ml-4">Ver</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -184,6 +165,27 @@ foreach ($reportes as $reporte) {
         <!-- MAIN -->
     </section>
     <!-- CONTENT -->
+
+    <!-- Modal -->
+    <div id="reportModal" class="fixed z-10 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6 overflow-auto max-h-screen">
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Contenido del Reporte</h3>
+                    <div class="mt-2">
+                        <input type="text" id="search" placeholder="Buscar..." class="border p-2 rounded w-full mb-4" onkeyup="searchInModal()">
+                        <table id="modal-table" class="min-w-full bg-white border border-gray-200"></table>
+                    </div>
+                </div>
+                <div id="modal-pagination" class="mt-4 flex justify-center space-x-1"></div>
+                <div class="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm" onclick="closeModal()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         const rowsPerPage = 5;
@@ -207,6 +209,7 @@ foreach ($reportes as $reporte) {
                     <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">${reporte.timestamp}</td>
                     <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
                         <a href="generate_report.php?id=${reporte.id}" class="text-blue-600 hover:text-blue-800">Descargar</a>
+                        <button onclick="viewReport(${reporte.id})" class="text-green-600 hover:text-green-800 ml-4">Ver</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
@@ -261,6 +264,73 @@ foreach ($reportes as $reporte) {
 
             currentPage = 1;
             renderTable();
+        }
+
+        function viewReport(id) {
+            fetch(`view_report.php?id=${id}`)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('modal-table').innerHTML = data;
+                    document.getElementById('reportModal').classList.remove('hidden');
+                    modalCurrentPage = 1;
+                    initModalPagination();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function closeModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+        }
+
+        function searchInModal() {
+            const searchQuery = document.getElementById('search').value.toLowerCase();
+            const modalTable = document.getElementById('modal-table');
+            const rows = modalTable.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+                const cells = Array.from(row.getElementsByTagName('td'));
+                const match = cells.some(cell => cell.textContent.toLowerCase().includes(searchQuery));
+                row.style.display = match ? '' : 'none';
+            });
+
+            modalCurrentPage = 1;
+            initModalPagination();
+        }
+
+        function initModalPagination() {
+            const modalTable = document.getElementById('modal-table');
+            const rows = Array.from(modalTable.querySelectorAll('tbody tr'));
+            const modalPagination = document.getElementById('modal-pagination');
+            const visibleRows = rows.filter(row => row.style.display !== 'none');
+            let modalCurrentPage = 1;
+            const modalRowsPerPage = 5;
+
+            function renderModalTable() {
+                visibleRows.forEach((row, index) => {
+                    row.style.display = (index >= (modalCurrentPage - 1) * modalRowsPerPage && index < modalCurrentPage * modalRowsPerPage) ? '' : 'none';
+                });
+                updateModalPagination();
+            }
+
+            function updateModalPagination() {
+                modalPagination.innerHTML = '';
+                const modalPageCount = Math.ceil(visibleRows.length / modalRowsPerPage);
+                for (let i = 1; i <= modalPageCount; i++) {
+                    const pageNumber = document.createElement('button');
+                    pageNumber.className = 'bg-gray-300 text-gray-700 px-3 py-1 rounded';
+                    pageNumber.innerText = i;
+                    pageNumber.onclick = () => {
+                        modalCurrentPage = i;
+                        renderModalTable();
+                    };
+                    if (i === modalCurrentPage) {
+                        pageNumber.classList.add('bg-blue-500', 'text-white');
+                    }
+                    modalPagination.appendChild(pageNumber);
+                }
+            }
+
+            renderModalTable();
         }
 
         document.addEventListener('DOMContentLoaded', () => {

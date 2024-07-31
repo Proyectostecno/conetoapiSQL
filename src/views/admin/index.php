@@ -1,5 +1,9 @@
 <?php
 session_start();
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+    header('Location: ../../../index.php');
+    exit();
+}
 
 include '../../../controllers/db_connection.php';
 
@@ -95,37 +99,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['despacho'])) {
                 </a>
             </li>
             <li>
-                <a href="../Vbarcodes/Vbarcodes.php">
+                <a href="scan/scan.php">
                     <i class='bx bx-barcode-reader'></i>
                     <span class="text">Verificación</span>
                 </a>
             </li>
+
             <li>
-                <a href="../Sproductos/Sproductos.php">
-                    <i class='bx bxs-cloud-upload'></i>
-                    <span class="text">Subir Productos</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Sbarcodes/Sbarcodes.php">
-                    <i class='bx bx-upload'></i>
-                    <span class="text">Subir Barcodes</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Dproductos/Dproductos.php">
-                    <i class='bx bxs-download'></i>
-                    <span class="text">D Productos</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Vbarcodes/seleccionar_grupo.php">
-                    <i class='bx bx-package'></i>
-                    <span class="text">Selecionar Grupo</span>
-                </a>
-            </li>
-            <li>
-                <a href="../Lreporte/Lreporte.php">
+                <a href="Greporte/list_reports.php">
                     <i class='bx bxs-report'></i>
                     <span class="text">Reportes</span>
                 </a>
@@ -133,19 +114,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['despacho'])) {
         </ul>
         <ul class="side-menu">
             <li>
-                <a href="../Rusuarios/Rusuarios.php">
+                <a href="Rregistro/register.php">
                     <i class='bx bx-user'></i>
                     <span class="text">R usuarios</span>
                 </a>
             </li>
             <li>
-                <a href="../Rusuarios/Vusuarios.php">
+                <a href="Rregistro/list_users.php">
                     <i class='bx bx-group'></i>
                     <span class="text">Listado usuarios</span>
                 </a>
             </li>
             <li>
-                <a href="../../../../controllers/logout.php" class="logout">
+                <a href="../../../controllers/logout.php" class="logout">
                     <i class='bx bxs-log-out-circle'></i>
                     <span class="text">Cerrar sesión</span>
                 </a>
